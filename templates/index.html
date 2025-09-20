@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DRDO Radar Surveillance Defense System - Classified</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        color-scheme: dark;
+        --theme-bg: #0b1220;
+        --theme-text: #e5e7eb;
+      }
+      html, body { height: 100%; }
+      body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--theme-bg); color: var(--theme-text); }
+      .card { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; backdrop-filter: blur(6px); }
+      .glass { background: rgba(17,24,39,0.6); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(8px); }
+      .optimal-threat-td { background-color: rgba(239, 68, 68, 0.18); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; }
+      th { color: #9ca3af; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+      #radarCanvas { width: 600px; height: 600px; }
+      .stat-card { background: linear-gradient(180deg, rgba(37,99,235,0.15), rgba(37,99,235,0.05)); border: 1px solid rgba(37,99,235,0.35); border-radius: 14px; padding: 16px; }
+      .stat-value { font-size: 28px; font-weight: 700; color: #93c5fd; }
+      .stat-label { color: #93a3b8; font-size: 13px; margin-top: 6px; }
+      .eliminated-target { background-color: rgba(239, 68, 68, 0.08); }
+      .active-target { background-color: rgba(34, 197, 94, 0.08); }
+      .control-label { color: #9ca3af; font-size: 12px; }
+      .control-input { background: rgba(17,24,39,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; width: 110px; color: #e5e7eb; }
+      .control-select { background: rgba(17,24,39,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; color: #e5e7eb; }
+      .primary-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border-radius: 12px; padding: 10px 16px; font-weight: 600; }
+      .secondary-btn { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 16px; font-weight: 600; }
+      .drdo-header { background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(185,28,28,0.1)); border: 1px solid rgba(220,38,38,0.3); }
+      .military-border { border-image: linear-gradient(45deg, #dc2626, #1d4ed8, #059669) 1; }
+      .classified-text { background: linear-gradient(45deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      .nav-item { position: relative; }
+      .nav-item::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 2px; background: linear-gradient(90deg, #dc2626, #1d4ed8); transition: width 0.3s ease; }
+      .nav-item:hover::after { width: 100%; }
+      .settings-option { transition: all 0.3s ease; cursor: pointer; }
+      .settings-option:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+      .settings-option.active { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+      .slider-container { position: relative; margin: 20px 0; }
+      .slider { width: 100%; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); outline: none; }
+      .slider::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; cursor: pointer; }
+      .slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; cursor: pointer; border: none; }
+      .theme-preview { transition: all 0.3s ease; }
+      .theme-preview:hover { transform: scale(1.05); }
+      .theme-preview.selected { border: 3px solid #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+      .range-indicator { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; opacity: 0; visibility: hidden; transition: opacity .15s ease; }
+      .range-indicator.show { opacity: 1; visibility: visible; }
+      .live-preview { position: fixed; top: 20px; right: 20px; width: 200px; height: 200px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.8); z-index: 1000; pointer-events: none; }
+      .live-preview::before { content: ''; position: absolute; top: 50%; left: 50%; width: 2px; height: 50%; background: linear-gradient(to top, transparent, #00ff00); transform-origin: bottom; transform: translate(-50%, -100%) rotate(0deg); animation: radar-sweep var(--radar-speed, 3s) linear infinite; }
+      @keyframes radar-sweep { 0% { transform: translate(-50%, -100%) rotate(0deg); } 100% { transform: translate(-50%, -100%) rotate(360deg); } }
+      .responsive-grid { display: grid; gap: 1rem; }
+      @media (max-width: 768px) { .responsive-grid { grid-template-columns: 1fr; } }
+      @media (min-width: 769px) and (max-width: 1024px) { .responsive-grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (min-width: 1025px) { .responsive-grid { grid-template-columns: repeat(3, 1fr); } }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <header class="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-slate-950/90 to-slate-900/40 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4 py-4">
+        <!-- DRDO Official Header -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-4">
+            <!-- DRDO Logo -->
+            <div class="flex items-center gap-3">
+              <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-red-600/30 to-red-800/30 border-2 border-red-400/50 grid place-items-center overflow-hidden">
+                <img src="/image/drdo.jpg" alt="DRDO Logo" class="h-10 w-10 object-contain" />
+              </div>
+              <div class="border-l border-white/20 h-8"></div>
+              <div>
+                <div class="text-white text-xl font-bold tracking-wide">DEFENCE RESEARCH & DEVELOPMENT ORGANISATION</div>
+                <div class="text-xs text-slate-400 uppercase tracking-wider">Government of India</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- System Status Indicators -->
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <div class="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span class="text-xs text-slate-300 uppercase tracking-wide">System Online</span>
+            </div>
+            <div class="text-xs text-slate-400">
+              <div>Classified - Restricted Access</div>
+              <div>Security Level: MAXIMUM</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Navigation Bar -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-6">
+            <!-- Main Navigation -->
+            <nav class="flex items-center gap-6">
+              <div class="flex items-center gap-2">
+                <div class="h-8 w-8 rounded bg-blue-600/20 border border-blue-400/40 grid place-items-center">
+                  <span class="text-blue-300 font-bold text-sm">R</span>
+                </div>
+                <div>
+                  <div class="text-white text-lg font-semibold tracking-wide">Radar Surveillance System</div>
+                  <div class="text-xs text-slate-400">Multi-Sensor Defense Network</div>
+                </div>
+              </div>
+              
+              <!-- Navigation Links -->
+              <div class="hidden lg:flex items-center gap-1 ml-8">
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="scrollToDashboard()">
+                  Dashboard
+                </button>
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="scrollToThreatAnalysis()">
+                  Threat Analysis
+                </button>
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="scrollToPredictions()">
+                  Predictions
+                </button>
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="scrollToDatabase()">
+                  Database
+                </button>
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="downloadExcelReport(this)">
+                  Reports
+                </button>
+                <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="showSettingsPanel()">
+                  Settings
+                </button>
+              </div>
+            </nav>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-3">
+            <!-- Mobile Menu Button -->
+            <button class="lg:hidden p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors" onclick="toggleMobileMenu()">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            </button>
+            
+            <button class="secondary-btn text-sm hidden sm:flex" onclick="location.reload()">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              <span class="hidden sm:inline">Refresh Stats</span>
+            </button>
+            <button class="primary-btn text-sm" onclick="killBestThreat()">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+              </svg>
+              <span class="hidden sm:inline">Eliminate Threat</span>
+            </button>
+            
+            <!-- Emergency Alert -->
+            <button class="px-3 py-2 bg-red-600/20 border border-red-400/40 text-red-300 hover:bg-red-600/30 rounded-lg transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Security Classification Banner -->
+    <div class="bg-gradient-to-r from-red-900/20 to-red-800/20 border-y border-red-500/30 py-2">
+      <div class="mx-auto max-w-7xl px-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <div class="h-1 w-8 bg-red-400"></div>
+              <span class="classified-text text-sm font-bold uppercase tracking-wider">CLASSIFIED</span>
+              <div class="h-1 w-8 bg-red-400"></div>
+            </div>
+            <div class="text-xs text-slate-300">
+              <span class="font-semibold">RESTRICTED ACCESS</span> - Authorized Personnel Only
+            </div>
+          </div>
+          <div class="text-xs text-slate-400">
+            <div>Security Clearance Required</div>
+            <div>DRDO Project: RADAR-SURV-2025</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Menu -->
+    <div id="mobileMenu" class="lg:hidden bg-slate-900/95 backdrop-blur border-b border-white/10 hidden">
+      <div class="mx-auto max-w-7xl px-4 py-4">
+        <nav class="flex flex-col gap-2">
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="scrollToDashboard()">
+            Dashboard
+          </button>
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="scrollToThreatAnalysis()">
+            Threat Analysis
+          </button>
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="scrollToPredictions()">
+            Predictions
+          </button>
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="scrollToDatabase()">
+            Database
+          </button>
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="downloadExcelReport(this)">
+            Reports
+          </button>
+          <button class="nav-item px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded transition-colors text-left" onclick="showSettingsPanel()">
+            Settings
+          </button>
+          <div class="border-t border-white/10 my-2"></div>
+          <button class="secondary-btn text-sm w-full" onclick="location.reload()">
+            <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh Stats
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Settings Panel Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-slate-900/95 backdrop-blur border border-white/20 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <!-- Settings Header -->
+          <div class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-white/10 p-6 rounded-t-2xl">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-lg bg-blue-600/20 border border-blue-400/40 grid place-items-center">
+                  <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-white">System Settings</h2>
+                  <p class="text-sm text-slate-400">Configure DRDO Radar Surveillance System</p>
+                </div>
+              </div>
+              <button onclick="hideSettingsPanel()" class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Preview -->
+          <div class="p-4 border-b border-white/10">
+            <div class="flex items-center justify-center">
+              <div class="live-preview" id="liveRadarPreview">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-xs text-white/60">Live Preview</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Content -->
+          <div class="p-6 space-y-8">
+            <!-- Radar Configuration -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                </svg>
+                Radar Configuration
+                <span class="text-xs text-slate-400 ml-auto">Live Preview</span>
+              </h3>
+              <div class="responsive-grid">
+                <div class="glass rounded-xl p-4 settings-option">
+                  <label class="block text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Sweep Speed
+                  </label>
+                  <div class="slider-container">
+                    <input type="range" id="sweepSpeedSlider" class="slider" min="1" max="3" value="1" oninput="updateSweepSpeed(this.value)">
+                    <div class="range-indicator" id="sweepSpeedIndicator">Slow (2 RPM)</div>
+                  </div>
+                  <div class="flex justify-between text-xs text-slate-400 mt-2">
+                    <span>Slow</span>
+                    <span>Medium</span>
+                    <span>Fast</span>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+
+            <!-- Theme Selection -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                </svg>
+                Display Theme
+                <span class="text-xs text-slate-400 ml-auto">Live Preview</span>
+              </h3>
+              <div class="responsive-grid">
+                <div class="glass rounded-xl p-4 cursor-pointer settings-option theme-preview" onclick="selectTheme('dark')" data-theme="dark">
+                  <div class="flex items-center gap-3 mb-3">
+                    <input type="radio" name="theme" value="dark" class="h-4 w-4 text-blue-600" checked>
+                    <span class="text-slate-300 font-medium">Dark Theme</span>
+                    <div class="ml-auto flex items-center gap-1">
+                      <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span class="text-xs text-green-400">Active</span>
+                    </div>
+                  </div>
+                  <div class="h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-slate-700 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                    <div class="absolute top-2 left-2 w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    <div class="absolute top-2 right-2 w-1 h-1 bg-green-400 rounded-full"></div>
+                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-blue-400 rounded"></div>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-2">Military standard dark interface</p>
+                </div>
+                
+                <div class="glass rounded-xl p-4 cursor-pointer settings-option theme-preview" onclick="selectTheme('light')" data-theme="light">
+                  <div class="flex items-center gap-3 mb-3">
+                    <input type="radio" name="theme" value="light" class="h-4 w-4 text-blue-600">
+                    <span class="text-slate-300 font-medium">Light Theme</span>
+                    <div class="ml-auto flex items-center gap-1">
+                      <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                      <span class="text-xs text-slate-400">Inactive</span>
+                    </div>
+                  </div>
+                  <div class="h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-200/30 to-transparent animate-pulse"></div>
+                    <div class="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <div class="absolute top-2 right-2 w-1 h-1 bg-green-500 rounded-full"></div>
+                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-blue-500 rounded"></div>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-2">Clean professional interface</p>
+                </div>
+                
+                <div class="glass rounded-xl p-4 cursor-pointer settings-option theme-preview" onclick="selectTheme('military')" data-theme="military">
+                  <div class="flex items-center gap-3 mb-3">
+                    <input type="radio" name="theme" value="military" class="h-4 w-4 text-blue-600">
+                    <span class="text-slate-300 font-medium">Military Theme</span>
+                    <div class="ml-auto flex items-center gap-1">
+                      <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                      <span class="text-xs text-slate-400">Inactive</span>
+                    </div>
+                  </div>
+                  <div class="h-20 bg-gradient-to-br from-green-900 to-green-800 rounded-lg border border-green-600 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/20 to-transparent animate-pulse"></div>
+                    <div class="absolute top-2 left-2 w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    <div class="absolute top-2 right-2 w-1 h-1 bg-green-400 rounded-full"></div>
+                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-green-400 rounded"></div>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-2">Tactical green interface</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Report Format Settings -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Report Format Settings
+                <span class="text-xs text-slate-400 ml-auto">Test Download</span>
+              </h3>
+              <div class="glass rounded-xl p-4">
+                <label class="block text-sm font-medium text-slate-300 mb-3">Default Export Format</label>
+                <div class="responsive-grid">
+                  <div class="flex items-center gap-3 p-4 bg-white/5 rounded-lg settings-option cursor-pointer hover:bg-white/10 transition-colors" onclick="selectReportFormat('excel')">
+                    <input type="radio" name="reportFormat" value="excel" class="h-4 w-4 text-green-600" checked onchange="selectReportFormat(this.value)">
+                    <div class="flex items-center gap-3 flex-1">
+                      <div class="p-2 bg-green-600/20 rounded-lg">
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <span class="text-slate-300 font-medium">Excel (.xlsx)</span>
+                        <p class="text-xs text-slate-400">Multi-sheet with charts</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span class="text-xs text-green-400">Active</span>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-3 p-4 bg-white/5 rounded-lg settings-option cursor-pointer hover:bg-white/10 transition-colors" onclick="selectReportFormat('pdf')">
+                    <input type="radio" name="reportFormat" value="pdf" class="h-4 w-4 text-red-600" onchange="selectReportFormat(this.value)">
+                    <div class="flex items-center gap-3 flex-1">
+                      <div class="p-2 bg-red-600/20 rounded-lg">
+                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <span class="text-slate-300 font-medium">PDF (.pdf)</span>
+                        <p class="text-xs text-slate-400">Professional formatted</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                      <span class="text-xs text-slate-400">Inactive</span>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-3 p-4 bg-white/5 rounded-lg settings-option cursor-pointer hover:bg-white/10 transition-colors" onclick="selectReportFormat('csv')">
+                    <input type="radio" name="reportFormat" value="csv" class="h-4 w-4 text-blue-600" onchange="selectReportFormat(this.value)">
+                    <div class="flex items-center gap-3 flex-1">
+                      <div class="p-2 bg-blue-600/20 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <span class="text-slate-300 font-medium">CSV (.csv)</span>
+                        <p class="text-xs text-slate-400">Raw data export</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                      <span class="text-xs text-slate-400">Inactive</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Test Download Button -->
+                <div class="mt-4 pt-4 border-t border-white/10">
+                  <button onclick="testDownload(this)" class="w-full secondary-btn flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Test Download Sample Report
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between pt-6 border-t border-white/10">
+              <button onclick="resetSettings()" class="secondary-btn">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Reset to Default
+              </button>
+              <div class="flex gap-3">
+                <button onclick="hideSettingsPanel()" class="secondary-btn">Cancel</button>
+                <button onclick="saveSettings()" class="primary-btn">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Save Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-8">
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-4 lg:col-span-2">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-semibold text-slate-200">Operational Radar</h2>
+            <span class="text-xs text-slate-400">Live sweep</span>
+          </div>
+          <div class="w-full overflow-auto">
+            <canvas id="radarCanvas" width="600" height="600" class="mx-auto rounded-full border border-white/10"></canvas>
+          </div>
+        </div>
+
+        <div id="right" class="card p-4">
+          <h3 class="text-slate-200 font-semibold mb-3">Controls</h3>
+
+          <div class="space-y-5">
+            <div class="glass rounded-xl p-4">
+              <div class="text-sm font-semibold text-slate-300 mb-3">Add Threat</div>
+              <form id="threatForm" class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-3 items-center">
+                  <label class="control-label">X</label>
+                  <input type="number" id="threatX" required class="control-input" min="-15" max="15" step="0.01" placeholder="-15 to 15" title="X range: -15 to 15" oninvalid="this.setCustomValidity('X must be between -15 and 15')" oninput="this.setCustomValidity('')" />
+                  <label class="control-label">Y</label>
+                  <input type="number" id="threatY" required class="control-input" min="-15" max="15" step="0.01" placeholder="-15 to 15" title="Y range: -15 to 15" oninvalid="this.setCustomValidity('Y must be between -15 and 15')" oninput="this.setCustomValidity('')" />
+                </div>
+                <div class="grid grid-cols-2 gap-3 items-center">
+                  <label class="control-label">VX</label>
+                  <input type="number" id="threatVX" required class="control-input" min="-5" max="5" step="0.01" placeholder="-5 to 5" title="VX range: -5 to 5" oninvalid="this.setCustomValidity('VX must be between -5 and 5')" oninput="this.setCustomValidity('')" />
+                  <label class="control-label">VY</label>
+                  <input type="number" id="threatVY" required class="control-input" min="-5" max="5" step="0.01" placeholder="-5 to 5" title="VY range: -5 to 5" oninvalid="this.setCustomValidity('VY must be between -5 and 5')" oninput="this.setCustomValidity('')" />
+                </div>
+                <div class="grid grid-cols-2 gap-3 items-center">
+                  <label class="control-label">AX</label>
+                  <input type="number" id="threatAX" class="control-input" min="-0.5" max="0.5" step="0.01" placeholder="-0.5 to 0.5" title="AX range: -0.5 to 0.5" />
+                  <label class="control-label">AY</label>
+                  <input type="number" id="threatAY" class="control-input" min="-0.5" max="0.5" step="0.01" placeholder="-0.5 to 0.5" title="AY range: -0.5 to 0.5" />
+                </div>
+                <div class="grid grid-cols-2 gap-3 items-center">
+                  <label class="control-label">RCS</label>
+                  <input type="number" id="threatRCS" step="0.01" class="control-input" min="0" max="10" placeholder="0 to 10" title="RCS range: 0 to 10" />
+                  <label class="control-label">Type</label>
+                  <select id="threatType" class="control-select">
+              <option value="unknown" selected>unknown</option>
+              <option value="stealth_jet">stealth jet</option>
+              <option value="fighter_jet">fighter jet</option>
+              <option value="transport">transport</option>
+              <option value="cruise_missile">cruise missile</option>
+              <option value="ballistic_missile">ballistic missile</option>
+              <option value="drone">drone</option>
+              <option value="micro_drone">micro_drone</option>
+              <option value="helicopter">helicopter</option>
+            </select>
+          </div>
+                <div class="flex gap-3">
+                  <button type="submit" class="primary-btn">Add Threat</button>
+                  <button type="button" onclick="addRandom()" class="secondary-btn">Add Random</button>
+          </div>
+        </form>
+            </div>
+
+            <div class="glass rounded-xl p-4">
+              <div class="text-sm font-semibold text-slate-300 mb-3">Add Key Point</div>
+              <form id="keypointForm" class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-3 items-center">
+                  <label class="control-label">X</label>
+                  <input type="number" id="kpX" required class="control-input" />
+                  <label class="control-label">Y</label>
+                  <input type="number" id="kpY" required class="control-input" />
+          </div>
+                <button type="submit" class="secondary-btn w-full">Add Key Point</button>
+        </form>
+              <div class="mt-3">
+                <div class="text-xs text-slate-400 mb-2">Suggested axis/key points</div>
+                <div id="kpSuggestions" class="flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div id="btn-frame" class="glass rounded-xl p-4">
+              <div class="flex items-center justify-between gap-3">
+                <button onclick="killBestThreat()" class="primary-btn w-full">Kill Optimal Threat</button>
+              </div>
+              <div id="alerts" class="flex items-center gap-3 mt-3">
+                <label class="flex items-center gap-2 text-sm text-slate-300">
+                  <input type="checkbox" id="voiceToggle" class="h-4 w-4">
+                  Enable AI Voice Alerts
+                </label>
+                <select id="voiceType" class="control-select">
+              <option value="system">System Voice</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+        </div>
+      </div>
+        </div>
+      </section>
+
+
+      <section id="tables" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="keypointTableContainer" class="card p-4">
+          <h3 class="text-slate-200 font-semibold mb-3">Key Points</h3>
+          <div class="overflow-auto">
+            <table id="keypointTable">
+            <thead>
+              <tr>
+                <th>Key Point ID</th>
+                <th>Position</th>
+                <th>Name</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        </div>
+        <div id="threatTableContainer" class="card p-4">
+          <h3 class="text-slate-200 font-semibold mb-3">Threats</h3>
+          <div class="overflow-auto">
+            <table id="threatTable">
+            <thead>
+              <tr>
+                <th>Threat ID</th>
+                <th>Position</th>
+                <th>Velocity</th>
+                <th>Acceleration</th>
+                <th>RCS</th>
+                <th>Type</th>
+                <th>Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      </section>
+
+      <section id="threatAnalysisSection" class="grid grid-cols-1 gap-6">
+        <div id="aiHighRiskBanner" class="hidden p-3 rounded-lg bg-red-600/20 border border-red-500/40 text-red-200">
+          High Risk Alert: Dangerous incoming detected. Immediate action recommended.
+        </div>
+        <div class="card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-200 font-semibold">AI Assistant</h3>
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" id="autoNeutralizeDronesToggle" class="h-4 w-4">
+              Auto neutralize high‑risk drones
+            </label>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <div class="text-slate-300 font-medium mb-2">Real‑time Recommendations</div>
+              <ul id="aiRecommendations" class="list-disc pl-5 text-slate-300 text-sm space-y-1"></ul>
+            </div>
+            <div>
+              <div class="text-slate-300 font-medium mb-2">AI Alerts (text)</div>
+              <ul id="aiAlertsFeed" class="list-disc pl-5 text-slate-300 text-sm space-y-1"></ul>
+            </div>
+            <div>
+              <div class="text-slate-300 font-medium mb-2">AI Priority Ordering</div>
+              <ol id="aiPriorityList" class="list-decimal pl-5 text-slate-300 text-sm space-y-1"></ol>
+            </div>
+          </div>
+        </div>
+        <div class="card p-4">
+          <h3 class="text-slate-200 font-semibold mb-3">Threat Scores Over Time</h3>
+          <div class="w-full overflow-auto">
+            <canvas id="scoreGraph" width="800" height="400" class="mx-auto"></canvas>
+          </div>
+        </div>
+
+        <!-- Predictive Analysis Section - Compact -->
+        <div class="card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-200 font-semibold flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              Predictive Threat Analysis
+            </h3>
+            <button onclick="loadPredictions()" class="secondary-btn text-sm">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Refresh Analysis
+            </button>
+          </div>
+          
+          <!-- Compact Layout: Heatmap + Data in 3 columns -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Vulnerability Heatmap - Smaller -->
+            <div class="lg:col-span-1">
+              <h4 class="text-slate-300 font-medium mb-2 text-sm">Sector Heatmap</h4>
+              <div class="relative">
+                <canvas id="sectorHeatmap" width="300" height="300" class="border border-slate-600 rounded-full w-full max-w-xs mx-auto"></canvas>
+                <div class="absolute top-1 right-1 bg-slate-900/80 px-1 py-0.5 rounded text-xs text-slate-300">
+                  <div class="flex items-center gap-1 text-xs">
+                    <div class="w-2 h-2 bg-green-500 rounded"></div>
+                    <span>Low</span>
+                  </div>
+                  <div class="flex items-center gap-1 text-xs">
+                    <div class="w-2 h-2 bg-yellow-500 rounded"></div>
+                    <span>Med</span>
+                  </div>
+                  <div class="flex items-center gap-1 text-xs">
+                    <div class="w-2 h-2 bg-red-500 rounded"></div>
+                    <span>High</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Most Vulnerable Sectors - Compact -->
+            <div class="glass rounded-lg p-3">
+              <h4 class="text-slate-300 font-medium mb-2 text-sm">Vulnerable Sectors</h4>
+              <div id="vulnerableSectors" class="space-y-1 text-xs">
+                <div class="text-slate-400">Loading analysis...</div>
+              </div>
+            </div>
+
+            <!-- Threat Patterns + Summary - Combined -->
+            <div class="space-y-3">
+              <div class="glass rounded-lg p-3">
+                <h4 class="text-slate-300 font-medium mb-2 text-sm">Threat Patterns</h4>
+                <div id="threatPatterns" class="space-y-1 text-xs">
+                  <div class="text-slate-400">Loading patterns...</div>
+                </div>
+              </div>
+              
+              <div class="glass rounded-lg p-3">
+                <h4 class="text-slate-300 font-medium mb-2 text-sm">Summary</h4>
+                <div id="analysisSummary" class="text-slate-400 text-xs space-y-1">
+                  <div>Attacks: <span id="totalAttacks" class="text-slate-200">-</span></div>
+                  <div>Updated: <span id="lastAnalysis" class="text-slate-200">-</span></div>
+                  <div>Confidence: <span id="confidence" class="text-slate-200">-</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="databaseSection" class="card p-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-slate-200 font-semibold">Database Management & Analytics</h3>
+            <div class="flex gap-2">
+              <button onclick="loadDatabaseTargets()" class="secondary-btn">All</button>
+              <button onclick="loadActiveTargets()" class="secondary-btn">Active</button>
+              <button onclick="loadEliminatedTargets()" class="secondary-btn">Eliminated</button>
+              <button onclick="loadStatistics()" class="secondary-btn">Statistics</button>
+              <button onclick="cleanupDatabase()" class="secondary-btn">Cleanup</button>
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4" id="statsGrid"></div>
+          <div class="mt-6 overflow-auto">
+            <h4 class="text-slate-300 font-medium mb-2">Database Targets</h4>
+            <table id="databaseTable">
+              <thead>
+                <tr>
+                  <th>Target ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Position</th>
+                  <th>Created</th>
+                  <th>Eliminated</th>
+                  <th>Method</th>
+                  <th>Final Score</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div id="targetHistorySection" class="mt-4 hidden">
+              <h4 class="text-slate-300 font-medium mb-2">Target History</h4>
+              <div id="targetHistory" class="rounded-lg border border-white/10 p-3 overflow-y-auto max-h-80 bg-black/20"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const canvas = document.getElementById("radarCanvas");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      let threats = [];
+      let keyPoints = [[0, 0]];
+      let bestTargetIndex = -1;
+      let targetScores = [];
+      let targetTypes = [];
+      let blinkingThreats = [];
+      let pixelsPerUnit = 20; // scales world units to canvas pixels
+      let sweepSpeedMultiplier = 1.0; // affects radar sweep speed
+      const militaryPositions = ["Alpha Base","Bravo Outpost","Charlie Station","Delta Command","Echo Point"];
+      let targetIdCounter = 1;
+      let lastAnnouncedBestIndex = -1;
+      let lastAnnouncementAt = 0;
+
+      const typeShapes = {
+        "stealth jet": "triangle",
+        "fighter jet": "chevron",
+        "transport": "rect",
+        "cruise missile": "arrow",
+        "ballistic missile": "square",
+        "drone": "diamond",
+        "micro drone": "x",
+        "helicopter": "rotor",
+        "unknown": "circle"
+      };
+
+      // Database integration functions
+      async function loadDatabaseTargets() {
+        try {
+          const response = await fetch('/api/targets');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading targets:', error);
+        }
+      }
+
+      async function loadActiveTargets() {
+        try {
+          const response = await fetch('/api/targets?type=active');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading active targets:', error);
+        }
+      }
+
+      async function loadEliminatedTargets() {
+        try {
+          const response = await fetch('/api/targets?type=eliminated');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading eliminated targets:', error);
+        }
+      }
+
+      async function loadStatistics() {
+        try {
+          const response = await fetch('/api/statistics');
+          const stats = await response.json();
+          displayStatistics(stats);
+        } catch (error) {
+          console.error('Error loading statistics:', error);
+        }
+      }
+
+      async function cleanupDatabase() {
+        try {
+          const response = await fetch('/api/cleanup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({days: 30})
+          });
+          const result = await response.json();
+          console.log(result.message);
+          loadStatistics(); // Refresh stats after cleanup
+        } catch (error) {
+          console.error('Error cleaning up database:', error);
+        }
+      }
+
+      async function viewTargetHistory(targetId) {
+        try {
+          const response = await fetch(`/api/targets/${targetId}/history`);
+          const history = await response.json();
+          displayTargetHistory(targetId, history);
+        } catch (error) {
+          console.error('Error loading target history:', error);
+        }
+      }
+
+      async function createTargetInDatabase(id, position, velocity, acceleration, rcs, targetType) {
+        try {
+          const response = await fetch('/api/targets', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              target_id: `T${id}`,
+              position: position,
+              velocity: velocity,
+              acceleration: acceleration,
+              rcs: rcs,
+              target_type: targetType || 'unknown',
+              name: `Target_${id}`
+            })
+          });
+          
+          if (response.ok) {
+            console.log(`Target T${id} created in database`);
+            // Refresh database display
+            loadDatabaseTargets();
+          } else {
+            console.error(`Failed to create target T${id} in database`);
+          }
+        } catch (error) {
+          console.error('Error creating target in database:', error);
+        }
+      }
+
+      function displayDatabaseTargets(targets) {
+        const tbody = document.getElementById("databaseTable").querySelector("tbody");
+        tbody.innerHTML = "";
+        
+        targets.forEach(target => {
+          const row = document.createElement("tr");
+          const isEliminated = target.eliminated_at;
+          
+          if (isEliminated) {
+            row.classList.add("eliminated-target");
+          } else {
+            row.classList.add("active-target");
+          }
+          
+          row.innerHTML = `
+            <td>${target.target_id}</td>
+            <td>${target.name || 'N/A'}</td>
+            <td>${target.target_type}</td>
+            <td>(${target.position_x?.toFixed(2) || 0}, ${target.position_y?.toFixed(2) || 0})</td>
+            <td>${target.created_at}</td>
+            <td>${target.eliminated_at || 'Active'}</td>
+            <td>${target.elimination_method || 'N/A'}</td>
+            <td>${target.final_score?.toFixed(2) || 'N/A'}</td>
+            <td>
+              <button onclick="viewTargetHistory('${target.target_id}')">History</button>
+              ${!isEliminated ? `<button onclick="eliminateTargetFromDB('${target.target_id}')">Eliminate</button>` : ''}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function displayStatistics(stats) {
+        const statsGrid = document.getElementById("statsGrid");
+        statsGrid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-value">${stats.total_targets}</div>
+            <div class="stat-label">Total Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.active_targets}</div>
+            <div class="stat-label">Active Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.eliminated_targets}</div>
+            <div class="stat-label">Eliminated Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.avg_time_to_elimination_seconds?.toFixed(1) || 'N/A'}</div>
+            <div class="stat-label">Avg Time to Eliminate (s)</div>
+          </div>
+        `;
+        
+        // Add type breakdown
+        Object.entries(stats.targets_by_type || {}).forEach(([type, count]) => {
+          const typeCard = document.createElement("div");
+          typeCard.className = "stat-card";
+          typeCard.innerHTML = `
+            <div class="stat-value">${count}</div>
+            <div class="stat-label">${type.replace('_', ' ').toUpperCase()}</div>
+          `;
+          statsGrid.appendChild(typeCard);
+        });
+      }
+
+      function displayTargetHistory(targetId, history) {
+        const historySection = document.getElementById("targetHistorySection");
+        const historyDiv = document.getElementById("targetHistory");
+        
+        historySection.style.display = "block";
+        
+        let historyHTML = `<h4>History for Target ${targetId}</h4>`;
+        historyHTML += '<table border="1" style="width: 100%; margin-top: 10px;">';
+        historyHTML += '<thead><tr><th>Event</th><th>Position</th><th>Velocity</th><th>Score</th><th>Timestamp</th></tr></thead><tbody>';
+        
+        history.forEach(event => {
+          historyHTML += `
+            <tr>
+              <td>${event.event_type}</td>
+              <td>${event.position ? `(${event.position[0]?.toFixed(2) || 0}, ${event.position[1]?.toFixed(2) || 0})` : 'N/A'}</td>
+              <td>${event.velocity ? `(${event.velocity[0]?.toFixed(2) || 0}, ${event.velocity[1]?.toFixed(2) || 0})` : 'N/A'}</td>
+              <td>${event.score?.toFixed(2) || 'N/A'}</td>
+              <td>${event.timestamp}</td>
+            </tr>
+          `;
+        });
+        
+        historyHTML += '</tbody></table>';
+        historyDiv.innerHTML = historyHTML;
+      }
+
+      // Database integration functions
+      async function loadDatabaseTargets() {
+        try {
+          const response = await fetch('/api/targets');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading targets:', error);
+        }
+      }
+
+      async function loadActiveTargets() {
+        try {
+          const response = await fetch('/api/targets?type=active');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading active targets:', error);
+        }
+      }
+
+      async function loadEliminatedTargets() {
+        try {
+          const response = await fetch('/api/targets?type=eliminated');
+          const targets = await response.json();
+          displayDatabaseTargets(targets);
+        } catch (error) {
+          console.error('Error loading eliminated targets:', error);
+        }
+      }
+
+      async function loadStatistics() {
+        try {
+          const response = await fetch('/api/statistics');
+          const stats = await response.json();
+          displayStatistics(stats);
+        } catch (error) {
+          console.error('Error loading statistics:', error);
+        }
+      }
+
+      async function cleanupDatabase() {
+        try {
+          const response = await fetch('/api/cleanup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({days: 30})
+          });
+          const result = await response.json();
+          console.log(result.message);
+          loadStatistics(); // Refresh stats after cleanup
+        } catch (error) {
+          console.error('Error cleaning up database:', error);
+        }
+      }
+
+      async function eliminateTargetFromDB(targetId, finalScore = null, method = 'manual') {
+        try {
+          const response = await fetch(`/api/targets/${targetId}/eliminate`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({method, final_score: finalScore})
+          });
+          const result = await response.json();
+          console.log(result.message);
+          loadDatabaseTargets(); // Refresh the table
+        } catch (error) {
+          console.error('Error eliminating target:', error);
+        }
+      }
+
+      async function viewTargetHistory(targetId) {
+        try {
+          const response = await fetch(`/api/targets/${targetId}/history`);
+          const history = await response.json();
+          displayTargetHistory(targetId, history);
+        } catch (error) {
+          console.error('Error loading target history:', error);
+        }
+      }
+
+      function displayDatabaseTargets(targets) {
+        const tbody = document.getElementById("databaseTable").querySelector("tbody");
+        tbody.innerHTML = "";
+        
+        targets.forEach(target => {
+          const row = document.createElement("tr");
+          const isEliminated = target.eliminated_at;
+          
+          if (isEliminated) {
+            row.classList.add("eliminated-target");
+          } else {
+            row.classList.add("active-target");
+          }
+          
+          row.innerHTML = `
+            <td>${target.target_id}</td>
+            <td>${target.name || 'N/A'}</td>
+            <td>${target.target_type}</td>
+            <td>(${target.position_x?.toFixed(2) || 0}, ${target.position_y?.toFixed(2) || 0})</td>
+            <td>${target.created_at}</td>
+            <td>${target.eliminated_at || 'Active'}</td>
+            <td>${target.elimination_method || 'N/A'}</td>
+            <td>${target.final_score?.toFixed(2) || 'N/A'}</td>
+            <td>
+              <button onclick="viewTargetHistory('${target.target_id}')">History</button>
+              ${!isEliminated ? `<button onclick="eliminateTargetFromDB('${target.target_id}')">Eliminate</button>` : ''}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function displayStatistics(stats) {
+        const statsGrid = document.getElementById("statsGrid");
+        statsGrid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-value">${stats.total_targets}</div>
+            <div class="stat-label">Total Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.active_targets}</div>
+            <div class="stat-label">Active Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.eliminated_targets}</div>
+            <div class="stat-label">Eliminated Targets</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.avg_time_to_elimination_seconds?.toFixed(1) || 'N/A'}</div>
+            <div class="stat-label">Avg Time to Eliminate (s)</div>
+          </div>
+        `;
+        
+        // Add type breakdown
+        Object.entries(stats.targets_by_type || {}).forEach(([type, count]) => {
+          const typeCard = document.createElement("div");
+          typeCard.className = "stat-card";
+          typeCard.innerHTML = `
+            <div class="stat-value">${count}</div>
+            <div class="stat-label">${type.replace('_', ' ').toUpperCase()}</div>
+          `;
+          statsGrid.appendChild(typeCard);
+        });
+      }
+
+      function displayTargetHistory(targetId, history) {
+        const historySection = document.getElementById("targetHistorySection");
+        const historyDiv = document.getElementById("targetHistory");
+        
+        historySection.style.display = "block";
+        
+        let historyHTML = `<h4>History for Target ${targetId}</h4>`;
+        historyHTML += '<table border="1" style="width: 100%; margin-top: 10px;">';
+        historyHTML += '<thead><tr><th>Event</th><th>Position</th><th>Velocity</th><th>Score</th><th>Timestamp</th></tr></thead><tbody>';
+        
+        history.forEach(event => {
+          historyHTML += `
+            <tr>
+              <td>${event.event_type}</td>
+              <td>${event.position ? `(${event.position[0]?.toFixed(2) || 0}, ${event.position[1]?.toFixed(2) || 0})` : 'N/A'}</td>
+              <td>${event.velocity ? `(${event.velocity[0]?.toFixed(2) || 0}, ${event.velocity[1]?.toFixed(2) || 0})` : 'N/A'}</td>
+              <td>${event.score?.toFixed(2) || 'N/A'}</td>
+              <td>${event.timestamp}</td>
+            </tr>
+          `;
+        });
+        
+        historyHTML += '</tbody></table>';
+        historyDiv.innerHTML = historyHTML;
+      }
+
+      function drawRadarSweep(angle) {
+        ctx.save();
+        ctx.translate(width / 2, height / 2);
+        
+        // Modern radar sweep with gradient and glow effect
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 300);
+        gradient.addColorStop(0, "rgba(0, 255, 0, 0.4)");
+        gradient.addColorStop(0.7, "rgba(0, 255, 0, 0.15)");
+        gradient.addColorStop(1, "rgba(0, 255, 0, 0.02)");
+        
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, 300, angle - 0.1, angle + 0.3);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Bright sweep line
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 2;
+        ctx.shadowColor = "#00ff00";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(300 * Math.cos(angle), 300 * Math.sin(angle));
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        ctx.restore();
+      }
+
+      function drawConcentricCircles() {
+        ctx.save();
+        ctx.translate(width / 2, height / 2);
+        
+        // Range circles with different styles
+        const ranges = [
+          { radius: 50, color: "#00ff00", width: 1, dash: [] },
+          { radius: 100, color: "#ff0000", width: 2, dash: [5, 5] },
+          { radius: 150, color: "#00ff00", width: 1, dash: [] },
+          { radius: 200, color: "#00ff00", width: 1, dash: [] },
+          { radius: 250, color: "#00ff00", width: 1, dash: [] },
+          { radius: 300, color: "#00ff00", width: 2, dash: [] }
+        ];
+        
+        ranges.forEach(({ radius, color, width, dash }) => {
+          ctx.lineWidth = width;
+          ctx.strokeStyle = color;
+          ctx.setLineDash(dash);
+          ctx.shadowColor = color;
+          ctx.shadowBlur = radius === 100 ? 5 : 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+        
+        // Range labels
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "12px monospace";
+        ctx.textAlign = "center";
+        [100, 200, 300].forEach(radius => {
+          ctx.fillText(`${radius}km`, radius + 10, -5);
+        });
+        
+        ctx.restore();
+      }
+
+      function drawRadialLines() {
+        ctx.save();
+        ctx.translate(width / 2, height / 2);
+        
+        // Main cardinal directions (thicker)
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 2;
+        ctx.shadowColor = "#00ff00";
+        ctx.shadowBlur = 3;
+        [0, 90, 180, 270].forEach(angle => {
+          const rad = (angle * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(300 * Math.cos(rad), 300 * Math.sin(rad));
+          ctx.stroke();
+        });
+        
+        // Secondary lines (thinner, dashed)
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.shadowBlur = 1;
+        for (let i = 15; i < 360; i += 30) {
+          if (i % 90 === 0) continue; // Skip main directions
+          const rad = (i * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(300 * Math.cos(rad), 300 * Math.sin(rad));
+          ctx.stroke();
+        }
+        
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+        
+        // Direction labels
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "bold 14px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("N", 0, -280);
+        ctx.fillText("E", 280, 0);
+        ctx.fillText("S", 0, 300);
+        ctx.fillText("W", -280, 0);
+        
+        ctx.restore();
+      }
+
+
+      function drawThreatSymbol(x, y, shape, isBest) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.strokeStyle = isBest ? "yellow" : "red";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (isBest) ctx.setLineDash([2, 2]);
+        if (shape === "circle") {
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        } else if (shape === "square") {
+          ctx.rect(-8, -8, 16, 16);
+        } else if (shape === "rect") {
+          // wider rectangle to represent transport aircraft
+          ctx.rect(-12, -8, 24, 16);
+        } else if (shape === "triangle") {
+          ctx.moveTo(0, -10);
+          ctx.lineTo(8, 8);
+          ctx.lineTo(-8, 8);
+          ctx.closePath();
+        } else if (shape === "chevron") {
+          // V-shaped chevron for fighter jet
+          ctx.moveTo(-10, -4);
+          ctx.lineTo(0, 6);
+          ctx.lineTo(10, -4);
+        } else if (shape === "diamond") {
+          // rotated square (diamond)
+          ctx.moveTo(0, -10);
+          ctx.lineTo(10, 0);
+          ctx.lineTo(0, 10);
+          ctx.lineTo(-10, 0);
+          ctx.closePath();
+        } else if (shape === "x") {
+          // draw an X mark
+          ctx.moveTo(-8, -8);
+          ctx.lineTo(8, 8);
+          ctx.moveTo(8, -8);
+          ctx.lineTo(-8, 8);
+        } else if (shape === "arrow") {
+          // right-facing arrow for cruise missile
+          ctx.moveTo(-8, -6);
+          ctx.lineTo(8, 0);
+          ctx.lineTo(-8, 6);
+          ctx.closePath();
+        } else if (shape === "rotor") {
+          // helicopter rotor: circle with cross blades
+          ctx.arc(0, 0, 6, 0, Math.PI * 2);
+          ctx.moveTo(-10, 0);
+          ctx.lineTo(10, 0);
+          ctx.moveTo(0, -10);
+          ctx.lineTo(0, 10);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawBlinkingThreats() {
+        const blinkOn = Math.floor(Date.now() / 250) % 2 === 0;
+        console.log(blinkOn)
+        blinkingThreats.forEach((threat, index) => {
+          threat.lifetime -= 25;
+          if (threat.lifetime <= 0) {
+            blinkingThreats.splice(index, 1);
+          } else if (blinkOn) {
+            const screenX = threat.position[0] * pixelsPerUnit + 300;
+            const screenY = threat.position[1] * pixelsPerUnit + 300;
+            drawThreatSymbol(screenX, screenY, typeShapes[threat.type || "unknown"], true);
+          }
+        });
+      }
+
+      // Voice Alerts (Web Speech API)
+      let voiceAlertsEnabled = false;
+      let lastSpokenBestId = null;
+      let voices = [];
+      const synth = window.speechSynthesis;
+
+      function loadVoices() {
+        voices = synth.getVoices();
+      }
+      loadVoices();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+      }
+
+      function pickVoice(preference) {
+        if (!voices || voices.length === 0) return null;
+        const nameMatches = (v, names) => names.some(n => v.name.toLowerCase().includes(n));
+        if (preference === "female") {
+          const v = voices.find(v => nameMatches(v, ["female", "zira", "susan", "salli", "joanna", "amy"])) || voices[0];
+          return v;
+        } else if (preference === "male") {
+          const v = voices.find(v => nameMatches(v, ["male", "david", "brian", "matthew", "justin"])) || voices[0];
+          return v;
+        }
+        return voices[0];
+      }
+
+      function pushTextAlert(text) {
+        const feed = document.getElementById('aiAlertsFeed');
+        if (!feed || !text) return;
+        const li = document.createElement('li');
+        li.textContent = text;
+        feed.prepend(li);
+        while (feed.children.length > 8) feed.removeChild(feed.lastChild);
+      }
+
+      function speak(text) {
+        if (!text) return;
+        // Always add to text feed even if voice is off
+        pushTextAlert(text);
+        if (!voiceAlertsEnabled) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        const pref = document.getElementById("voiceType").value;
+        const chosen = pickVoice(pref);
+        if (chosen) utter.voice = chosen;
+        utter.rate = 1.05;
+        utter.pitch = 1.0;
+        utter.volume = 1.0;
+        synth.cancel();
+        synth.speak(utter);
+      }
+
+      function drawScene(angle) {
+        // Modern radar background with subtle grid
+        const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, 350);
+        gradient.addColorStop(0, "#001100");
+        gradient.addColorStop(0.8, "#000800");
+        gradient.addColorStop(1, "#000000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        
+        // Add subtle grid pattern
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.1)";
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < width; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, height);
+          ctx.stroke();
+        }
+        for (let i = 0; i < height; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(width, i);
+          ctx.stroke();
+        }
+        
+        drawConcentricCircles();
+        drawRadialLines();
+        drawRadarSweep(angle);
+
+        keyPoints.forEach(([x, y], index) => {
+          ctx.beginPath();
+          ctx.arc(x * pixelsPerUnit + 300, y * pixelsPerUnit + 300, 6, 0, Math.PI * 2);
+          ctx.fillStyle = "lime";
+          ctx.fill();
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
+          ctx.fillText(index === 0 ? "RC" : `KP${index}`, x * pixelsPerUnit + 310, y * pixelsPerUnit + 300);
+        });
+
+        threats.forEach(([pos, vel, acc, rcs, ttype], index) => {
+          const angularVelocity = 0.001;
+          const ang = Math.atan2(vel[1], vel[0]) + angularVelocity;
+          const speed = Math.sqrt(vel[0]**2 + vel[1]**2);
+          vel[0] = Math.cos(ang) * speed;
+          vel[1] = Math.sin(ang) * speed;
+
+          if (acc && (acc[0] !== 0 || acc[1] !== 0)) {
+            vel[0] += acc[0] * 0.03;
+            vel[1] += acc[1] * 0.03;
+          }
+
+          pos[0] += vel[0] * 0.03;
+          pos[1] += vel[1] * 0.03;
+
+          const screenX = pos[0] * pixelsPerUnit + 300;
+          const screenY = pos[1] * pixelsPerUnit + 300;
+          drawThreatSymbol(screenX, screenY, typeShapes[ttype || "unknown"], index === bestTargetIndex);
+          
+          ctx.beginPath();
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+          ctx.moveTo(pos[0] * pixelsPerUnit + 300, pos[1] * pixelsPerUnit + 300);
+
+          let futureX = pos[0];
+          let futureY = pos[1];
+          let futureVX = vel[0];
+          let futureVY = vel[1];
+          while (true) {
+            futureVX += acc ? acc[0] * 0.03 : 0;
+            futureVY += acc ? acc[1] * 0.03 : 0;
+            futureX += futureVX * 0.03;
+            futureY += futureVY * 0.03;
+
+            const screenX = futureX * pixelsPerUnit + 300;
+            const screenY = futureY * pixelsPerUnit + 300;
+
+            if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) break;
+
+            ctx.lineTo(screenX, screenY);
+          }
+
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
+          ctx.fillText(`T${index+1}`, screenX + 10, screenY);
+        })
+
+        drawBlinkingThreats();
+      }
+
+      function addRandom() {
+        const angle = Math.random() * Math.PI * 2;
+        const x = Math.cos(angle) * 15;
+        const y = Math.sin(angle) * 15;
+        const vx = -x * 0.05 + (Math.random() - 0.5) * 0.5;
+        const vy = -y * 0.05 + (Math.random() - 0.5) * 0.5;
+        const ax = (Math.random()) * 0.01;
+        const ay = (Math.random()) * 0.01;
+        const rcs = Math.random() * 5;
+        const id = targetIdCounter++;
+        
+        // Add to local threats array
+        threats.push([[x, y], [vx, vy], [ax, ay], rcs, null, { id, newAnnounced: false, nearAnnounced: false, awayAnnounced: false }]);
+        
+        // Create target in database
+        createTargetInDatabase(id, [x, y], [vx, vy], [ax, ay], rcs, null);
+        
+        speak("New target detected stay alert");
+      }
+
+      function removeThreatsInsideRedCircle() {
+        threats = threats.filter(([pos, , , , ttype, meta], index) => {
+          const distance = Math.sqrt(pos[0]**2 + pos[1]**2) * pixelsPerUnit;
+          if (distance <= 100) {
+            const targetId = meta?.id ?? (index+1);
+            blinkingThreats.push({ id: targetId, position: pos, type: ttype, lifetime: 2000 });
+            
+            // Eliminate from database with automatic method and current score if available
+            const idx = (meta?.id ?? (index+1)) - 1;
+            const finalScore = targetScores[idx] ?? null;
+            eliminateTargetFromDB(`T${targetId}`, finalScore, 'automatic');
+            
+            speak(`Critical warning. Target breached the safe perimeter.`);
+            return false;
+          }
+          return true;
+        });
+      }
+
+      const baseApproachThresholdPx = 180;
+      function alertApproachingSafePoint() {
+        threats.forEach(([pos, vel, , , ttype, meta], index) => {
+          if (!meta) return;
+          const distancePx = Math.sqrt(pos[0]**2 + pos[1]**2) * pixelsPerUnit;
+          const approachThresholdPx = baseApproachThresholdPx; // Fixed threshold
+          if (distancePx <= approachThresholdPx && distancePx > 100 && !meta.nearAnnounced) {
+            meta.nearAnnounced = true;
+            const specificType = ttype || 'unknown';
+            speak(`Target ${specificType} is approaching the safe point destroy it immediately`);
+          }
+        });
+      }
+
+      function alertMovingAwayFromSafePoint() {
+        threats.forEach(([pos, vel, , , ttype, meta]) => {
+          if (!meta) return;
+          if (meta.nearAnnounced) return;
+          const dot = (pos[0] * vel[0]) + (pos[1] * vel[1]);
+          if (dot > 0 && !meta.awayAnnounced) {
+            meta.awayAnnounced = true;
+            const specificType = ttype || 'unknown';
+            speak(`${specificType} is moving away destroy it immediately`);
+          }
+        });
+      }
+
+      function removeOutOfBoundsThreats() {
+        threats = threats.filter(([pos, , , , ttype, meta], index) => {
+          const x = pos[0]*pixelsPerUnit + 300;
+          const y = pos[1]*pixelsPerUnit + 300;
+          if (x < 0 || x > width || y < 0 || y > height) {
+            // Target is out of bounds, eliminate from database (automatic)
+            const targetId = meta?.id ?? (index+1);
+            const idx = (meta?.id ?? (index+1)) - 1;
+            const finalScore = targetScores[idx] ?? null;
+            eliminateTargetFromDB(`T${targetId}`, finalScore, 'automatic');
+            return false;
+          }
+          return true;
+        });
+      }
+
+      let angle = 0;
+      function animateRadar() {
+        angle += 0.05 * sweepSpeedMultiplier;
+        removeThreatsInsideRedCircle();
+        alertMovingAwayFromSafePoint();
+        alertApproachingSafePoint();
+        removeOutOfBoundsThreats();
+        drawScene(angle);
+        requestAnimationFrame(animateRadar);
+      }
+
+      function updateThreatScore() {
+        fetch("/get_target", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({targets: threats, key_points: keyPoints})
+        })
+        .then(res => res.json())
+        .then(data => {
+          bestTargetIndex = data.best_target_index;
+          targetScores = data.scores;
+          targetTypes = data.target_types;
+          threats.forEach((t, i) => { t[4] = targetTypes[i]; });
+
+          // Immediately neutralize drones/micro-drones on detection
+          autoNeutralizeDronesImmediate();
+
+          // AI risk assessment and priority ordering
+          computeAiRiskAndRecommendations();
+
+          // Refresh keypoint suggestions
+          renderKeypointSuggestions();
+
+          const now = Date.now();
+          if (voiceAlertsEnabled && bestTargetIndex !== null && bestTargetIndex >= 0 && bestTargetIndex < threats.length) {
+            if (bestTargetIndex !== lastAnnouncedBestIndex && (now - lastAnnouncementAt) > 1500) {
+              const [pos, , , , ttype] = threats[bestTargetIndex] || [[0,0], [0,0], null, 0, "unknown"];
+              const score = (targetScores[bestTargetIndex] !== undefined && targetScores[bestTargetIndex] !== null)
+                ? Math.abs(targetScores[bestTargetIndex]).toFixed(1)
+                : "unknown";
+              speak(`Alert. Optimal threat is T${bestTargetIndex+1}. Type ${ttype || 'unknown'}. Score ${score}.`);
+              lastAnnouncedBestIndex = bestTargetIndex;
+              lastAnnouncementAt = now;
+            }
+          }
+        })
+        .catch(console.error);
+      }
+
+      function updateThreatTable() {
+        const tbody = document.getElementById("threatTable").querySelector("tbody");
+        tbody.innerHTML = "";
+        threats.forEach(([pos, vel, acc, rcs, ttype], idx) => {
+          const rawScore = targetScores[idx];
+          const score = rawScore !== undefined && rawScore !== null ? rawScore.toFixed(2) : "N/A";
+          const row = document.createElement("tr");
+          if (idx === bestTargetIndex) row.classList.add("optimal-threat-td");
+          row.innerHTML = `
+            <td>T${idx+1}</td>
+            <td>(${pos[0].toFixed(2)}, ${pos[1].toFixed(2)})</td>
+            <td>(${vel[0].toFixed(2)}, ${vel[1].toFixed(2)})</td>
+            <td>${acc ? `(${acc[0].toFixed(2)}, ${acc[1].toFixed(2)})` : 'N/A'}</td>
+            <td>${rcs?.toFixed(2) || 0}</td>
+            <td>${ttype || "unknown"}</td>
+            <td>${score}</td>
+            <td>
+              <button onclick="eliminateTargetFromDB('T${idx+1}', ${rawScore ?? 'null'}, 'manual')">Eliminate</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // ---------- AI Risk Assessment & Automation ----------
+      function computeRiskForThreat(index) {
+        const [pos, vel, acc, rcs, ttype] = threats[index] || [[0,0],[0,0],null,0,'unknown'];
+        const score = targetScores[index];
+        const distance = Math.sqrt(pos[0]**2 + pos[1]**2) * pixelsPerUnit; // px from center
+        const speed = Math.sqrt(vel[0]**2 + vel[1]**2);
+        const towardCenter = (pos[0]*vel[0] + pos[1]*vel[1]) < 0 ? 1 : 0; // 1 if moving inward
+        // Lower score is more threatening in backend logic; invert and normalize
+        const threatScore = typeof score === 'number' ? -score : 0;
+        const normThreat = 1 / (1 + Math.exp(-threatScore / 100)); // 0..1
+        const normDist = Math.max(0, 1 - distance / 300); // 1 near center, 0 far
+        const normSpeed = Math.min(1, speed / 2.0);
+        const typeBoost = (ttype === 'cruise missile' || ttype === 'ballistic missile') ? 1.0 :
+                          (ttype === 'drone' || ttype === 'micro drone') ? 0.6 : 0.4;
+        const risk = 0.45*normThreat + 0.3*normDist + 0.2*normSpeed + 0.05*towardCenter;
+        return risk * typeBoost; // 0..~1.2
+      }
+
+      async function computeAiRiskAndRecommendations() {
+        if (!Array.isArray(threats) || threats.length === 0) {
+          document.getElementById('aiRecommendations').innerHTML = '<li>No active threats.</li>';
+          document.getElementById('aiPriorityList').innerHTML = '';
+          document.getElementById('aiHighRiskBanner').classList.add('hidden');
+          return;
+        }
+
+        const indexed = threats.map((_, i) => ({ i, risk: computeRiskForThreat(i) }));
+        indexed.sort((a,b) => b.risk - a.risk);
+
+        // Update priority list
+        const priorityOl = document.getElementById('aiPriorityList');
+        priorityOl.innerHTML = '';
+        indexed.slice(0, 10).forEach(({i, risk}) => {
+          const [pos, , , , ttype] = threats[i];
+          const li = document.createElement('li');
+          li.textContent = `T${i+1} • ${ttype || 'unknown'} • risk ${(risk*100).toFixed(0)}% • dist ${(Math.sqrt(pos[0]**2 + pos[1]**2)*pixelsPerUnit).toFixed(0)}px`;
+          priorityOl.appendChild(li);
+        });
+
+        // High risk banner
+        const highRisk = indexed[0]?.risk ?? 0;
+        const banner = document.getElementById('aiHighRiskBanner');
+        if (highRisk >= 0.75) {
+          banner.classList.remove('hidden');
+          speak('High risk warning. Immediate action recommended.');
+        } else {
+          banner.classList.add('hidden');
+        }
+
+        // Get predictive analysis data
+        let predictions = null;
+        try {
+          const response = await fetch('/api/predictions');
+          predictions = await response.json();
+        } catch (error) {
+          console.warn('Could not fetch predictions:', error);
+        }
+
+        // Enhanced real-time recommendations
+        const recs = [];
+        
+        // Immediate threat recommendations
+        if (highRisk >= 0.85) recs.push('🚨 IMMEDIATE: Neutralize top threat - critical risk level');
+        if (indexed.length >= 2 && indexed[1].risk >= 0.7) recs.push('⚡ HIGH: Assign secondary interceptor to second-ranked target');
+        if (threats.length > 8) recs.push('⚠️ DENSITY: High target concentration - consider area denial protocols');
+        
+        // Predictive analysis recommendations
+        if (predictions && predictions.most_vulnerable_sectors && predictions.most_vulnerable_sectors.length > 0) {
+          const [topSector, topScore] = predictions.most_vulnerable_sectors[0];
+          const sectorAngle = topSector * 30;
+          const sectorEnd = (topSector + 1) * 30;
+          
+          if (topScore > 5) {
+            recs.push(`🎯 PREDICTION: Sector ${topSector} (${sectorAngle}°-${sectorEnd}°) shows highest attack probability`);
+          }
+          
+          // Check if current threats are in predicted vulnerable sectors
+          const threatsInVulnerableSectors = threats.filter(([pos], i) => {
+            const angle = Math.atan2(pos[1], pos[0]);
+            const normalizedAngle = angle < 0 ? angle + 2 * Math.PI : angle;
+            const sector = Math.floor(normalizedAngle / (Math.PI / 6)) % 12;
+            return sector === topSector;
+          });
+          
+          if (threatsInVulnerableSectors.length > 0) {
+            recs.push(`📍 CONFIRMED: Threats detected in predicted vulnerable sector ${topSector}`);
+          }
+        }
+        
+        // Threat type analysis
+        const threatTypes = {};
+        threats.forEach(([, , , , ttype]) => {
+          threatTypes[ttype] = (threatTypes[ttype] || 0) + 1;
+        });
+        
+        if (threatTypes['drone'] > 3) {
+          recs.push('🛸 DRONE SWARM: Multiple drones detected - activate counter-drone systems');
+        }
+        if (threatTypes['stealth_jet'] > 0) {
+          recs.push('✈️ STEALTH: Stealth aircraft detected - enhance radar sensitivity');
+        }
+        if (threatTypes['cruise_missile'] > 0) {
+          recs.push('🚀 MISSILE: Cruise missile threat - activate missile defense');
+        }
+        
+        // System optimization recommendations
+        if (!voiceAlertsEnabled) recs.push('🔊 SYSTEM: Enable voice alerts for faster response times');
+        
+        const avgRisk = indexed.reduce((sum, {risk}) => sum + risk, 0) / indexed.length;
+        if (avgRisk > 0.6) {
+          recs.push('📊 ASSESSMENT: Elevated threat level - consider increasing patrol frequency');
+        }
+        
+        // Distance-based recommendations
+        const closeThreats = threats.filter(([pos]) => {
+          const distance = Math.sqrt(pos[0]**2 + pos[1]**2);
+          return distance < 5; // Within 5 units
+        });
+        
+        if (closeThreats.length > 0) {
+          recs.push(`⚡ PROXIMITY: ${closeThreats.length} threat(s) within critical range`);
+        }
+        
+        // Time-based recommendations
+        const now = new Date();
+        const hour = now.getHours();
+        if (hour >= 18 || hour <= 6) {
+          recs.push('🌙 NIGHT OPS: Low visibility conditions - enhance thermal detection');
+        }
+
+        const recUl = document.getElementById('aiRecommendations');
+        recUl.innerHTML = '';
+        (recs.length ? recs : ['✅ MONITORING: All targets within acceptable risk parameters']).forEach(text => {
+          const li = document.createElement('li');
+          li.textContent = text;
+          recUl.appendChild(li);
+        });
+
+        // Optional auto-neutralization: high-risk drones
+        const autoToggle = document.getElementById('autoNeutralizeDronesToggle');
+        if (autoToggle && autoToggle.checked) {
+          const candidate = indexed.find(({i, risk}) => risk >= 0.9 && (threats[i][4] === 'drone' || threats[i][4] === 'micro drone'));
+          if (candidate) {
+            const idx = candidate.i;
+            const rawScore = targetScores[idx] ?? null;
+            eliminateTargetFromDB(`T${idx+1}`, rawScore, 'automatic');
+            speak('Automated neutralization executed on high risk drone.');
+            threats.splice(idx, 1);
+          }
+        }
+      }
+
+      // Immediately neutralize any detected drones (no operator action needed)
+      function autoNeutralizeDronesImmediate() {
+        if (!Array.isArray(threats) || threats.length === 0) return;
+        const toRemove = [];
+        threats.forEach((t, i) => {
+          const meta = t[5] || {};
+          const ttype = t[4];
+          if ((ttype === 'drone' || ttype === 'micro drone') && !meta.autoElimProcessed) {
+            // Mark so we don't process again if request cycles occur before removal
+            meta.autoElimProcessed = true;
+            t[5] = meta;
+            const [pos] = t;
+            const rawScore = targetScores[i] ?? null;
+            const targetId = `T${(meta?.id ?? (i+1))}`;
+            // Blink effect for visual confirmation
+            blinkingThreats.push({ id: meta?.id ?? (i+1), position: pos, type: ttype, lifetime: 2000 });
+            // Eliminate in database and schedule local removal
+            eliminateTargetFromDB(targetId, rawScore, 'automatic');
+            speak('Automated neutralization executed on detected drone.');
+            toRemove.push(i);
+          }
+        });
+        // Remove from highest index to lowest to avoid reindexing issues
+        toRemove.sort((a,b)=>b-a).forEach(idx => threats.splice(idx, 1));
+      }
+
+      function updateKeyPointTable() {
+        const tbody = document.getElementById("keypointTable").querySelector("tbody");
+        tbody.innerHTML = "";
+        keyPoints.forEach(([x, y], idx) => {
+          const name = idx === 0 ? "Radar Center" : militaryPositions[(idx-1)%militaryPositions.length];
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${idx === 0 ? "RC" : `KP${idx}`}</td>
+            <td>(${x.toFixed(2)}, ${y.toFixed(2)})</td>
+            <td>${name}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // ---------- Key Point Suggestions ----------
+      function suggestionButton(label, x, y) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'px-2 py-1 text-xs rounded border border-white/10 bg-white/5 hover:bg-white/10';
+        btn.textContent = `${label} (${x.toFixed(1)}, ${y.toFixed(1)})`;
+        btn.onclick = () => {
+          const ix = document.getElementById('kpX');
+          const iy = document.getElementById('kpY');
+          if (ix && iy) { ix.value = x.toFixed(2); iy.value = y.toFixed(2); }
+        };
+        return btn;
+      }
+
+      function renderKeypointSuggestions() {
+        const c = document.getElementById('kpSuggestions');
+        if (!c) return;
+        c.innerHTML = '';
+        // Static axes suggestions (in world units)
+        c.appendChild(suggestionButton('Center', 0, 0));
+        c.appendChild(suggestionButton('East', 10, 0));
+        c.appendChild(suggestionButton('West', -10, 0));
+        c.appendChild(suggestionButton('North', 0, 10));
+        c.appendChild(suggestionButton('South', 0, -10));
+
+        // Intercept point for the current highest-risk target (simple lead)
+        if (threats.length > 0) {
+          // choose the one with minimal current score (more threatening) if available
+          let bestIdx = 0; let bestVal = Infinity;
+          threats.forEach((t, i) => { const s = targetScores[i]; if (typeof s === 'number' && s < bestVal) { bestVal = s; bestIdx = i; } });
+          const [pos, vel] = threats[bestIdx];
+          const predictT = 10; // seconds lookahead in simulation units
+          const ix = pos[0] + vel[0] * 0.03 * predictT;
+          const iy = pos[1] + vel[1] * 0.03 * predictT;
+          c.appendChild(suggestionButton('Predicted intercept', ix, iy));
+          // Flank points
+          const flankOffset = 5;
+          c.appendChild(suggestionButton('Flank +', ix + flankOffset, iy));
+          c.appendChild(suggestionButton('Flank -', ix - flankOffset, iy));
+        }
+      }
+
+      let timeElapsed = 0;
+      const scoreGraphCtx = document.getElementById("scoreGraph").getContext("2d");
+      const scoreGraph = new Chart(scoreGraphCtx, {
+        type: "line",
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true, position: "top" } },
+          scales: {
+            x: { title: { display: true, text: "Time (s)" }},
+            y: { title: { display: true, text: "Threat Score" }}
+          }
+        }
+      });
+
+      function updateScoreGraph() {
+        timeElapsed += 0.25;
+        scoreGraph.data.labels.push(timeElapsed.toFixed(2));
+
+        const activeThreatIds = threats.map((_, i) => `T${i + 1}`);
+        scoreGraph.data.datasets = scoreGraph.data.datasets.filter(dataset =>
+          activeThreatIds.includes(dataset.label)
+        );
+
+        threats.forEach((_, i) => {
+          const s = targetScores[i] || 0;
+          const label = `T${i + 1}`;
+          let dataset = scoreGraph.data.datasets.find(d => d.label === label);
+          if (!dataset) {
+            dataset = {
+              label,
+              data: [],
+              borderColor: `hsl(${i * 40}, 70%, 50%)`,
+              fill: false
+            };
+            scoreGraph.data.datasets.push(dataset);
+          }
+          dataset.data.push(s);
+        });
+
+        scoreGraph.update();
+      }
+
+      setInterval(() => {
+        updateThreatScore();
+        updateThreatTable();
+        updateKeyPointTable();
+        updateScoreGraph();
+      }, 250);
+
+      animateRadar();
+
+      document.getElementById("threatForm").onsubmit = e => {
+        e.preventDefault();
+        const x = parseFloat(document.getElementById("threatX").value);
+        const y = parseFloat(document.getElementById("threatY").value);
+        const vx = parseFloat(document.getElementById("threatVX").value);
+        const vy = parseFloat(document.getElementById("threatVY").value);
+        const ax = parseFloat(document.getElementById("threatAX").value) || 0;
+        const ay = parseFloat(document.getElementById("threatAY").value) || 0;
+        const rcs = parseFloat(document.getElementById("threatRCS").value) || 0;
+        const ttype = document.getElementById("threatType").value || null;
+        const id = targetIdCounter++;
+        
+        // Add to local threats array
+        threats.push([[x,y],[vx,vy],[ax,ay],rcs,ttype,{ id, newAnnounced: true, nearAnnounced: false, awayAnnounced: false }]);
+        
+        // Create target in database
+        createTargetInDatabase(id, [x,y], [vx,vy], [ax,ay], rcs, ttype);
+        
+        speak("New target detected stay alert");
+      };
+
+      document.getElementById("keypointForm").onsubmit = e => {
+        e.preventDefault();
+        const x = parseFloat(document.getElementById("kpX").value);
+        const y = parseFloat(document.getElementById("kpY").value);
+        keyPoints.push([x, y]);
+      };
+
+      function killBestThreat() {
+        if (bestTargetIndex >= 0 && bestTargetIndex < threats.length) {
+          const [pos, , , , ttype, meta] = threats[bestTargetIndex];
+          const announcedId = meta?.id ?? (bestTargetIndex+1);
+          const finalScore = targetScores[bestTargetIndex] ?? null;
+          const targetId = `T${announcedId}`;
+          
+          // Add to blinking threats
+          blinkingThreats.push({ id: announcedId, position: pos, type: ttype, lifetime: 2000 });
+          
+          // Eliminate from database
+          eliminateTargetFromDB(targetId, finalScore, 'manual');
+          
+          speak("Target is destroyed");
+          threats.splice(bestTargetIndex, 1);
+          bestTargetIndex = -1;
+        }
+      }
+
+      document.getElementById("voiceToggle").addEventListener('change', (e) => {
+        voiceAlertsEnabled = e.target.checked;
+        if (voiceAlertsEnabled) {
+          speak('AI voice alerts enabled.');
+        } else {
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+        }
+      });
+
+      // Mobile menu functionality
+      function toggleMobileMenu() {
+        const mobileMenu = document.getElementById('mobileMenu');
+        if (mobileMenu) {
+          mobileMenu.classList.toggle('hidden');
+        }
+      }
+
+      // Navigate to Dashboard (top of page)
+      function scrollToDashboard() {
+        // Close mobile menu if open
+        const mobileMenu = document.getElementById('mobileMenu');
+        if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+          mobileMenu.classList.add('hidden');
+        }
+        
+        // Smooth scroll to the top
+        window.scrollTo({ 
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+
+      // Navigate to Threat Analysis section
+      function scrollToThreatAnalysis() {
+        const threatAnalysisSection = document.getElementById('threatAnalysisSection');
+        if (threatAnalysisSection) {
+          // Close mobile menu if open
+          const mobileMenu = document.getElementById('mobileMenu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+          
+          // Smooth scroll to the section
+          threatAnalysisSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+          
+          // Add a subtle highlight effect
+          threatAnalysisSection.style.transition = 'all 0.3s ease';
+          threatAnalysisSection.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.3)';
+          setTimeout(() => {
+            threatAnalysisSection.style.boxShadow = '';
+          }, 2000);
+        }
+      }
+
+      // Navigate to Predictions section
+      function scrollToPredictions() {
+        const predictionsSection = document.getElementById('predictionsSection');
+        if (predictionsSection) {
+          // Close mobile menu if open
+          const mobileMenu = document.getElementById('mobileMenu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+          
+          // Smooth scroll to the section
+          predictionsSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+          
+          // Add a subtle highlight effect
+          predictionsSection.style.transition = 'all 0.3s ease';
+          predictionsSection.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.3)';
+          setTimeout(() => {
+            predictionsSection.style.boxShadow = '';
+          }, 2000);
+        }
+      }
+
+      // Navigate to Database section
+      function scrollToDatabase() {
+        const databaseSection = document.getElementById('databaseSection');
+        if (databaseSection) {
+          // Close mobile menu if open
+          const mobileMenu = document.getElementById('mobileMenu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+          
+          // Smooth scroll to the section
+          databaseSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+          
+          // Add a subtle highlight effect
+          databaseSection.style.transition = 'all 0.3s ease';
+          databaseSection.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.3)';
+          setTimeout(() => {
+            databaseSection.style.boxShadow = '';
+          }, 2000);
+        }
+      }
+
+      // Determine selected report format from the UI
+      function getSelectedReportFormat() {
+        const selected = document.querySelector('input[name="reportFormat"]:checked');
+        return selected ? selected.value : (localStorage.getItem('reportFormat') || 'excel');
+      }
+
+      // Download report (Excel/PDF/CSV) and restore button state without refresh
+      async function downloadExcelReport(btnEl, explicitFormat) {
+        // Keep stable references for reset
+        const reportsButton = btnEl instanceof HTMLElement ? btnEl : null;
+        let originalText = reportsButton ? reportsButton.innerHTML : '';
+        try {
+          // Close mobile menu if open
+          const mobileMenu = document.getElementById('mobileMenu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+
+          // Get selected report format from the UI (or explicit argument)
+          const reportFormat = explicitFormat || getSelectedReportFormat();
+          // bust caches by appending a timestamp
+          const apiEndpoint = `/api/export/${reportFormat}?t=${Date.now()}`;
+
+          // Show loading indicator
+          if (reportsButton) {
+            reportsButton.innerHTML = '<svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Generating Report...';
+            reportsButton.disabled = true;
+            reportsButton.setAttribute('aria-busy', 'true');
+          }
+
+          // Fetch data from API
+          const response = await fetch(apiEndpoint, { cache: 'no-store' });
+          
+          if (!response.ok) {
+            throw new Error('Failed to generate report');
+          }
+
+          // Get the blob data
+          const blob = await response.blob();
+          
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          
+          // Generate filename with timestamp and format
+          const now = new Date();
+          const timestamp = `${now.toISOString().slice(0, 19).replace(/:/g, '-')}-${now.getMilliseconds().toString().padStart(3,'0')}`;
+          const extension = reportFormat === 'excel' ? 'xlsx' : reportFormat;
+          a.download = `DRDO_Radar_Surveillance_Report_${timestamp}.${extension}`;
+          
+          // Trigger download
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          }, 0);
+
+          // Show success message
+          speak('Report generated and downloaded successfully');
+          
+        } catch (error) {
+          console.error('Error downloading report:', error);
+          speak('Error generating report. Please try again.');
+          alert('Error generating report. Please try again.');
+        } finally {
+          // Restore button state
+          if (reportsButton) {
+            reportsButton.innerHTML = originalText || 'Reports';
+            reportsButton.disabled = false;
+            reportsButton.removeAttribute('aria-busy');
+            try { reportsButton.blur(); } catch (e) {}
+          }
+        }
+      }
+
+      // Settings Panel Functions
+      function showSettingsPanel() {
+        // Close mobile menu if open
+        const mobileMenu = document.getElementById('mobileMenu');
+        if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+          mobileMenu.classList.add('hidden');
+        }
+        
+        // Load saved settings
+        loadSettings();
+        
+        // Show settings modal
+        const settingsModal = document.getElementById('settingsModal');
+        settingsModal.classList.remove('hidden');
+      }
+
+      function hideSettingsPanel() {
+        const settingsModal = document.getElementById('settingsModal');
+        settingsModal.classList.add('hidden');
+      }
+
+      // Interactive Settings Functions
+      function updateSweepSpeed(value) {
+        const speeds = ['Slow (2 RPM)', 'Medium (4 RPM)', 'Fast (6 RPM)'];
+        const speedValues = ['slow', 'medium', 'fast'];
+        const speedMultipliers = [0.5, 1.0, 1.5];
+        
+        const index = parseInt(value) - 1;
+        const indicator = document.getElementById('sweepSpeedIndicator');
+        indicator.textContent = speeds[index];
+        // Show indicator briefly during change
+        indicator.classList.add('show');
+        clearTimeout(updateSweepSpeed._t);
+        updateSweepSpeed._t = setTimeout(() => indicator.classList.remove('show'), 1000);
+        
+        // Update CSS preview speed (live preview ring)
+        const animationDuration = 3 / speedMultipliers[index];
+        document.documentElement.style.setProperty('--radar-speed', `${animationDuration}s`);
+
+        // ALSO update main radar animation multiplier used in animateRadar
+        sweepSpeedMultiplier = speedMultipliers[index];
+
+        // Persist immediately
+        try {
+          const savedSettings = JSON.parse(localStorage.getItem('radarSettings') || '{}');
+          savedSettings.sweepSpeed = speedValues[index];
+          localStorage.setItem('radarSettings', JSON.stringify(savedSettings));
+        } catch (e) { console.warn('Could not persist sweep speed:', e); }
+        
+        speak(`Sweep speed set to ${speeds[index]}`);
+      }
+
+
+      function selectTheme(theme) {
+        // Update radio button
+        document.querySelector(`input[name="theme"][value="${theme}"]`).checked = true;
+        
+        // Update theme previews
+        document.querySelectorAll('.theme-preview').forEach(preview => {
+          preview.classList.remove('selected');
+          const statusDot = preview.querySelector('.w-2.h-2');
+          const statusText = preview.querySelector('.text-xs');
+          
+          if (preview.dataset.theme === theme) {
+            preview.classList.add('selected');
+            statusDot.className = 'w-2 h-2 bg-green-400 rounded-full';
+            statusText.textContent = 'Active';
+            statusText.className = 'text-xs text-green-400';
+          } else {
+            statusDot.className = 'w-2 h-2 bg-slate-400 rounded-full';
+            statusText.textContent = 'Inactive';
+            statusText.className = 'text-xs text-slate-400';
+          }
+        });
+        
+        // Apply theme immediately to the whole app
+        applyThemePreview(theme);
+        try {
+          const savedSettings = JSON.parse(localStorage.getItem('radarSettings') || '{}');
+          savedSettings.theme = theme;
+          localStorage.setItem('radarSettings', JSON.stringify(savedSettings));
+        } catch (e) { console.warn('Could not persist theme:', e); }
+        speak(`Theme changed to ${theme}`);
+      }
+
+      function selectReportFormat(format) {
+        // Update radio button
+        document.querySelector(`input[name="reportFormat"][value="${format}"]`).checked = true;
+        
+        // Update format selection indicators
+        document.querySelectorAll('[onclick*="selectReportFormat"]').forEach(option => {
+          const statusDot = option.querySelector('.w-2.h-2');
+          const statusText = option.querySelector('.text-xs');
+          
+          if (option.onclick.toString().includes(format)) {
+            statusDot.className = 'w-2 h-2 bg-green-400 rounded-full';
+            statusText.textContent = 'Active';
+            statusText.className = 'text-xs text-green-400';
+          } else {
+            statusDot.className = 'w-2 h-2 bg-slate-400 rounded-full';
+            statusText.textContent = 'Inactive';
+            statusText.className = 'text-xs text-slate-400';
+          }
+        });
+        
+        // Persist immediately so the Reports button uses the chosen format
+        try {
+          localStorage.setItem('reportFormat', format);
+          const savedSettings = JSON.parse(localStorage.getItem('radarSettings') || '{}');
+          savedSettings.reportFormat = format;
+          localStorage.setItem('radarSettings', JSON.stringify(savedSettings));
+        } catch (e) { console.warn('Could not persist reportFormat:', e); }
+
+        speak(`Report format set to ${format.toUpperCase()}`);
+      }
+
+      function testDownload(btnEl) {
+        // Always read the current radio selection for format
+        const formatInput = document.querySelector('input[name="reportFormat"]:checked');
+        const fmt = formatInput ? formatInput.value : 'excel';
+        downloadExcelReport(btnEl, fmt);
+      }
+
+      // Detection range no longer changes canvas scale
+      function updateRadarRange(rangeKm) { /* disabled */ }
+
+      // Sensitivity no longer impacts alerts
+      function updateThreatSensitivity(level) { /* disabled */ }
+
+      function applyThemePreview(theme) {
+        // Apply theme preview to the interface
+        const body = document.body;
+        
+        // Remove existing theme classes
+        body.classList.remove('theme-dark', 'theme-light', 'theme-military');
+        
+        // Add new theme class
+        body.classList.add(`theme-${theme}`);
+        
+        // Update CSS variables for theme
+        const root = document.documentElement;
+        switch(theme) {
+          case 'dark':
+            root.style.setProperty('--theme-bg', '#0b1220');
+            root.style.setProperty('--theme-text', '#e5e7eb');
+            break;
+          case 'light':
+            root.style.setProperty('--theme-bg', '#f8fafc');
+            root.style.setProperty('--theme-text', '#1e293b');
+            break;
+          case 'military':
+            root.style.setProperty('--theme-bg', '#064e3b');
+            root.style.setProperty('--theme-text', '#d1fae5');
+            break;
+        }
+      }
+
+      function saveSettings() {
+        try {
+          // Get all settings values
+          const speedMap = { 1: 'slow', 2: 'medium', 3: 'fast' };
+          const sweepSpeedSliderVal = parseInt(document.getElementById('sweepSpeedSlider').value) || 1;
+          const settings = {
+            sweepSpeed: speedMap[sweepSpeedSliderVal],
+            theme: document.querySelector('input[name="theme"]:checked').value,
+            reportFormat: document.querySelector('input[name="reportFormat"]:checked').value
+          };
+
+          // Save to localStorage
+          localStorage.setItem('radarSettings', JSON.stringify(settings));
+          localStorage.setItem('reportFormat', settings.reportFormat);
+
+          // Apply settings
+          applySettings(settings);
+
+          // Show success message
+          speak('Settings saved successfully');
+          
+          // Hide settings panel
+          hideSettingsPanel();
+          
+        } catch (error) {
+          console.error('Error saving settings:', error);
+          speak('Error saving settings. Please try again.');
+        }
+      }
+
+      function loadSettings() {
+        try {
+          const savedSettings = localStorage.getItem('radarSettings');
+          if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            
+            // Restore slider values
+            if (settings.sweepSpeed) {
+              const speedMapToSlider = { 'slow': 1, 'medium': 2, 'fast': 3 };
+              const sliderValue = speedMapToSlider[settings.sweepSpeed] || 1;
+              const slider = document.getElementById('sweepSpeedSlider');
+              if (slider) {
+                slider.value = sliderValue;
+                updateSweepSpeed(sliderValue);
+              }
+            }
+            
+            
+            if (settings.theme) {
+              selectTheme(settings.theme);
+            }
+            
+            if (settings.reportFormat) {
+              selectReportFormat(settings.reportFormat);
+            } else {
+              // also reflect standalone stored format
+              const stored = localStorage.getItem('reportFormat');
+              if (stored) selectReportFormat(stored);
+            }
+
+          } else {
+            // Set default values (ensure indicators update)
+            const speedSlider = document.getElementById('sweepSpeedSlider');
+            if (speedSlider) { speedSlider.value = 1; updateSweepSpeed(1); }
+            selectTheme('dark');
+            selectReportFormat('excel');
+          }
+        } catch (error) {
+          console.error('Error loading settings:', error);
+        }
+      }
+
+      function resetSettings() {
+        // Reset to default values
+        const speedSlider = document.getElementById('sweepSpeedSlider');
+        if (speedSlider) { speedSlider.value = 1; updateSweepSpeed(1); }
+        document.querySelector('input[name="theme"][value="dark"]').checked = true;
+        document.querySelector('input[name="reportFormat"][value="excel"]').checked = true;
+        
+        speak('Settings reset to default values');
+      }
+
+      function applySettings(settings) {
+        // Apply sweep speed setting
+        if (settings.sweepSpeed) {
+          const speedMultiplier = settings.sweepSpeed === 'slow' ? 0.5 : 
+                                 settings.sweepSpeed === 'medium' ? 1.0 : 1.5;
+          // Apply speed by updating indicator and slider value
+          const map = { 'slow': 1, 'medium': 2, 'fast': 3 };
+          const sliderValue = map[settings.sweepSpeed] || 1;
+          const slider = document.getElementById('sweepSpeedSlider');
+          if (slider) {
+            slider.value = sliderValue;
+            updateSweepSpeed(sliderValue);
+          }
+          console.log(`Sweep speed set to: ${settings.sweepSpeed} (${speedMultiplier}x)`);
+        }
+
+
+        // Apply theme setting
+        if (settings.theme) {
+          console.log(`Theme applied: ${settings.theme}`);
+          // You can implement actual theme switching here
+        }
+
+        // Apply report format setting
+        if (settings.reportFormat) {
+          console.log(`Report format set to: ${settings.reportFormat}`);
+        }
+      }
+
+      // Load initial data when page loads
+      window.addEventListener('load', () => {
+        // Ensure Excel is the default and reflected visually
+        try {
+          localStorage.setItem('reportFormat', 'excel');
+        } catch (e) {}
+        selectReportFormat('excel');
+        loadStatistics();
+        loadDatabaseTargets();
+        loadPredictions();
+      });
+
+      // Predictive Analysis Functions
+      async function loadPredictions() {
+        try {
+          const response = await fetch('/api/predictions');
+          const predictions = await response.json();
+          displayPredictions(predictions);
+          
+          const heatmapResponse = await fetch('/api/sector-heatmap');
+          const heatmapData = await heatmapResponse.json();
+          drawSectorHeatmap(heatmapData);
+          
+        } catch (error) {
+          console.error('Error loading predictions:', error);
+        }
+      }
+
+      function displayPredictions(predictions) {
+        // Display vulnerable sectors
+        const vulnerableSectors = document.getElementById('vulnerableSectors');
+        vulnerableSectors.innerHTML = '';
+        
+        if (predictions.most_vulnerable_sectors && predictions.most_vulnerable_sectors.length > 0) {
+          predictions.most_vulnerable_sectors.forEach(([sector, score], index) => {
+            const sectorDiv = document.createElement('div');
+            sectorDiv.className = 'flex items-center justify-between p-2 bg-slate-800/50 rounded';
+            sectorDiv.innerHTML = `
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full ${index === 0 ? 'bg-red-500' : index === 1 ? 'bg-yellow-500' : 'bg-orange-500'}"></div>
+                <span class="text-slate-300">Sector ${sector} (${sector * 30}°-${(sector + 1) * 30}°)</span>
+              </div>
+              <span class="text-slate-400 text-sm">${score.toFixed(1)}</span>
+            `;
+            vulnerableSectors.appendChild(sectorDiv);
+          });
+        } else {
+          vulnerableSectors.innerHTML = '<div class="text-slate-400 text-sm">No attack data available</div>';
+        }
+
+        // Display threat patterns
+        const threatPatterns = document.getElementById('threatPatterns');
+        threatPatterns.innerHTML = '';
+        
+        if (predictions.threat_patterns && Object.keys(predictions.threat_patterns).length > 0) {
+          Object.entries(predictions.threat_patterns).forEach(([sector, types]) => {
+            const patternDiv = document.createElement('div');
+            patternDiv.className = 'p-2 bg-slate-800/50 rounded mb-2';
+            patternDiv.innerHTML = `
+              <div class="text-slate-300 font-medium mb-1">Sector ${sector}</div>
+              <div class="space-y-1">
+                ${Object.entries(types).map(([type, count]) => 
+                  `<div class="text-slate-400 text-sm">${type}: ${count} attacks</div>`
+                ).join('')}
+              </div>
+            `;
+            threatPatterns.appendChild(patternDiv);
+          });
+        } else {
+          threatPatterns.innerHTML = '<div class="text-slate-400 text-sm">No pattern data available</div>';
+        }
+
+        // Update analysis summary
+        document.getElementById('totalAttacks').textContent = predictions.total_attacks_30d || 0;
+        document.getElementById('lastAnalysis').textContent = new Date(predictions.analysis_timestamp).toLocaleString();
+        document.getElementById('confidence').textContent = '85%'; // Placeholder confidence
+      }
+
+      function drawSectorHeatmap(heatmapData) {
+        const canvas = document.getElementById('sectorHeatmap');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 180;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw background circle
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        // Draw sectors
+        const maxAttacks = Math.max(...heatmapData.map(d => d.attack_count), 1);
+        
+        heatmapData.forEach(data => {
+          const startAngle = (data.angle_start * Math.PI) / 180;
+          const endAngle = (data.angle_end * Math.PI) / 180;
+          const intensity = data.attack_count / maxAttacks;
+          
+          // Color based on intensity
+          let color;
+          if (intensity > 0.7) color = 'rgba(239, 68, 68, 0.8)'; // Red
+          else if (intensity > 0.4) color = 'rgba(245, 158, 11, 0.8)'; // Yellow
+          else if (intensity > 0.1) color = 'rgba(34, 197, 94, 0.8)'; // Green
+          else color = 'rgba(75, 85, 99, 0.3)'; // Gray
+          
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Draw sector lines
+          ctx.strokeStyle = '#6B7280';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(
+            centerX + radius * Math.cos(startAngle),
+            centerY + radius * Math.sin(startAngle)
+          );
+          ctx.stroke();
+        });
+
+        // Draw center point
+        ctx.fillStyle = '#F3F4F6';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw cardinal directions
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ['N', 'E', 'S', 'W'].forEach((dir, i) => {
+          const angle = (i * Math.PI) / 2;
+          const x = centerX + (radius + 20) * Math.cos(angle - Math.PI / 2);
+          const y = centerY + (radius + 20) * Math.sin(angle - Math.PI / 2);
+          ctx.fillText(dir, x, y);
+        });
+
+        // Draw sector numbers and names
+        for (let i = 0; i < 12; i++) {
+          const angle = (i * Math.PI / 6) - Math.PI / 2;
+          const sectorAngle = angle + Math.PI / 12; // Center of sector
+          const x = centerX + Math.cos(sectorAngle) * (radius - 25);
+          const y = centerY + Math.sin(sectorAngle) * (radius - 25);
+          
+          // Sector number
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px Inter';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${i + 1}`, x, y);
+          
+          // Sector name (if within chart bounds)
+          if (radius > 80) {
+            const nameX = centerX + Math.cos(sectorAngle) * (radius - 45);
+            const nameY = centerY + Math.sin(sectorAngle) * (radius - 45);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '8px Inter';
+            ctx.fillText(`S${i + 1}`, nameX, nameY);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
